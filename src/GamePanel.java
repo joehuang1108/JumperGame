@@ -14,15 +14,22 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener{
     private Timer timer;
     private Player player;
     private ArrayList<Platform> platforms;
+    private ArrayList<Enemy> enemies;
+    private boolean gameOver = false;
+    private int score = 0;
+    private int worldHeight = 0;
 
     private final int PANEL_WIDTH = 400;
     private final int PANEL_HEIGHT = 600;
+    private Image backgroundImage = new ImageIcon("assets/bck.png").getImage();
+
 
     public GamePanel(){
         setFocusable(true);
         addKeyListener(this);
         player = new Player(PANEL_WIDTH/2 - 20, PANEL_HEIGHT - 100);
         platforms = new ArrayList<>();
+        enemies = new ArrayList<>();
         initPlatforms();
         timer = new Timer(15, this);
     }
@@ -57,30 +64,124 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener{
         }
     }
 
+    private void updatePlatforms(){
+        // Scroll platform downward indefinitely
+        // Scroll platform downward if player is above half screen
+        // Create new platforms while removing old platforms
+        // Remove off-screen platforms and add new ones while maintaining 10 platforms at all times
 
+        // PART 1
+        // get player.y --> determines when to start scrolling
+        // move platform based on player's change of placement
+        if(player.y < PANEL_HEIGHT / 2){
+            int dy = (PANEL_HEIGHT / 2) - player.y;
+            player.y = PANEL_HEIGHT / 2;
+            worldHeight += dy;
 
+            for(Platform p : platforms){
+                p.y += dy;
+            }
+            // PART 2
+            // check for platform's position relative to screen height  
+            // remove if off-screen (position > PANEL_HEIGHT)
+            // while loop to check for platforms.size()
+            // add more platforms until 10
+            platforms.removeIf(p -> p.y > PANEL_HEIGHT); // this removes all platforms that's off screen
+            Random rand = new Random();
+            while (platforms.size() < 10){
+                int x = rand.nextInt(PANEL_WIDTH - 60);
+                int y = rand.nextInt(50);
+                platforms.add(new Platform(x, y));
+            }
+
+            // Occasionally spawn enemies
+            if(rand.nextInt(100) < 3){
+                int x = rand.nextInt(PANEL_WIDTH - 40);
+                enemies.add(new Enemy(x, -20));
+            }
+        }
+    }
+
+    private void updateEnemies(){
+        for(Enemy en : enemies){
+            en.update();
+        }
+        enemies.removeIf(en -> en.y > PANEL_HEIGHT);
+    }
+
+    private void checkEnemyCollision(){
+        // Check for collisions, and update win/lose logic
+        for(Enemy en : enemies){
+            if(player.getBounds().intersects(en.getBounds())){
+                gameOver = true;
+            }
+        }
+    }
+
+    private void checkFallOffScreen(){
+        // Simple check to see if player fall below the screen
+        // If lost --> gameOver variable = true
+        if(player.y > PANEL_HEIGHT){
+            gameOver = true;
+        }
+    }
+
+    // NEXT STEPS:
+    // Update blocks with sprites
+    // Features: Adding bullet to shoot enemy
+    // Features: Moving platforms (left to right)
+
+    private void updateScore() {
+        score = worldHeight;
+    }
 
     @Override
     protected void paintComponent(Graphics g){
         super.paintComponent(g);
-        setBackground(Color.WHITE);
+
+        // Draw background
+        g.drawImage(backgroundImage, 0, 0, PANEL_WIDTH, PANEL_HEIGHT, null);
 
         // draws the player
         player.draw(g);
 
         // draws the platforms
-        g.setColor(Color.GREEN);
         for (Platform p : platforms){
             p.draw(g);
+        }
+
+        // draws the enemy
+        for (Enemy en : enemies){
+            en.draw(g);
+        }
+
+        // Draw score 
+        g.drawString("Score: " + score, 10, 20);
+
+        // Draw Game Over
+        if(gameOver){
+            g.setFont(new Font("Arial", Font.BOLD, 36));
+            g.setColor(Color.BLACK);
+            g.drawString("GAME OVER", 80, PANEL_HEIGHT / 2);
         }
 
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        player.update();
-        checkPlatformCollsion();
-        repaint();
+        if(!gameOver){
+            player.update();
+            for (Platform p : platforms){
+                p.update();
+            }
+            checkPlatformCollsion();
+            checkEnemyCollision();
+            updatePlatforms();
+            updateEnemies();
+            updateScore();
+            checkFallOffScreen();
+            repaint();
+        }
     }
 
     @Override
