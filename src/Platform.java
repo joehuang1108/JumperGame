@@ -13,17 +13,22 @@ public class Platform {
     int height = 10;
 
     private Image sprite;
+    private static final Random RANDOM = new Random();
 
     // Platform speed
     int dx = 0;
 
     public Platform(int x, int y){
+        this(x, y, true);
+    }
+
+    public Platform(int x, int y, boolean canMove){
         this.x = x;
         this.y = y;
         sprite = new ImageIcon("assets/platform.png").getImage();
 
         // Randomize chances to be a moving platform
-        if(new Random().nextInt(100) < 20){
+        if (canMove && RANDOM.nextInt(100) < 20){
             dx = 2;
         }
     }

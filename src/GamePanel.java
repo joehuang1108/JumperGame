@@ -15,13 +15,16 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener{
     private Player player;
     private ArrayList<Platform> platforms;
     private ArrayList<Enemy> enemies;
+    private ArrayList<Bullet> bullets = new ArrayList<>();
     private boolean gameOver = false;
     private int score = 0;
     private int worldHeight = 0;
 
     private final int PANEL_WIDTH = 400;
     private final int PANEL_HEIGHT = 600;
+    private final int PLATFORM_ENEMY_CHANCE = 20;
     private Image backgroundImage = new ImageIcon("assets/bck.png").getImage();
+    private Random random = new Random();
 
 
     public GamePanel(){
@@ -41,14 +44,18 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener{
     private void initPlatforms(){
         // create 10 random platforms to spawn on screen
         // first platform MUST BE directly under the player
-        // incremental height for the platforms to spawn
-        Random rand = new Random();
-        // first platform directly under player
-        platforms.add(new Platform(player.x - 10, player.y + player.height + 10)); 
+        // initial platforms are safe: no enemy spawns here and the starting platform does not move
+        platforms.add(new Platform(player.x - 10, player.y + player.height + 10, false));
         for (int i = 1; i < 10; i++){
-            int x = rand.nextInt(PANEL_WIDTH - 60);
+            int x = random.nextInt(PANEL_WIDTH - 60);
             int y = PANEL_HEIGHT - i * 60;
-            platforms.add(new Platform(x, y));
+            platforms.add(new Platform(x, y, false));
+        }
+    }
+
+    private void maybeSpawnEnemyOnPlatform(Platform platform){
+        if (random.nextInt(100) < PLATFORM_ENEMY_CHANCE){
+            enemies.add(new Enemy(platform));
         }
     }
 
@@ -86,17 +93,24 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener{
             // remove if off-screen (position > PANEL_HEIGHT)
             // while loop to check for platforms.size()
             // add more platforms until 10
-            platforms.removeIf(p -> p.y > PANEL_HEIGHT); // this removes all platforms that's off screen
-            Random rand = new Random();
+            for (int i = platforms.size() - 1; i >= 0; i--) {
+                Platform p = platforms.get(i);
+                if (p.y > PANEL_HEIGHT) {
+                    platforms.remove(i);
+                    enemies.removeIf(en -> en.isStationary() && en.getPlatform() == p);
+                }
+            }
             while (platforms.size() < 10){
-                int x = rand.nextInt(PANEL_WIDTH - 60);
-                int y = rand.nextInt(50);
-                platforms.add(new Platform(x, y));
+                int x = random.nextInt(PANEL_WIDTH - 60);
+                int y = random.nextInt(50);
+                Platform p = new Platform(x, y);
+                platforms.add(p);
+                maybeSpawnEnemyOnPlatform(p);
             }
 
-            // Occasionally spawn enemies
-            if(rand.nextInt(100) < 3){
-                int x = rand.nextInt(PANEL_WIDTH - 40);
+            // Occasionally spawn enemies falling from the top
+            if(random.nextInt(100) < 3){
+                int x = random.nextInt(PANEL_WIDTH - 40);
                 enemies.add(new Enemy(x, -20));
             }
         }
@@ -118,6 +132,22 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener{
         }
     }
 
+    private void checkBulletCollision() {
+        for (int i = enemies.size() - 1; i >= 0; i--) {
+            Enemy en = enemies.get(i);
+
+            for (int j = bullets.size() - 1; j >= 0; j--) {
+                Bullet b = bullets.get(j);
+
+                if (b.getBounds().intersects(en.getBounds())) {
+                    enemies.remove(i);
+                    bullets.remove(j);
+                    break;
+                }
+            }
+        }
+    }
+
     private void checkFallOffScreen(){
         // Simple check to see if player fall below the screen
         // If lost --> gameOver variable = true
@@ -125,11 +155,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener{
             gameOver = true;
         }
     }
-
-    // NEXT STEPS:
-    // Update blocks with sprites
-    // Features: Adding bullet to shoot enemy
-    // Features: Moving platforms (left to right)
 
     private void updateScore() {
         score = worldHeight;
@@ -155,6 +180,11 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener{
             en.draw(g);
         }
 
+        // draws the bullets
+        for (Bullet b : bullets){
+            b.draw(g);
+        }
+
         // Draw score 
         g.drawString("Score: " + score, 10, 20);
 
@@ -174,8 +204,13 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener{
             for (Platform p : platforms){
                 p.update();
             }
+
+            for (Bullet b : bullets){
+                b.update();
+            }
             checkPlatformCollsion();
             checkEnemyCollision();
+            checkBulletCollision();
             updatePlatforms();
             updateEnemies();
             updateScore();
@@ -188,8 +223,10 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener{
     public void keyPressed(KeyEvent e) {
         if(e.getKeyCode() == KeyEvent.VK_LEFT) player.left = true;
         if(e.getKeyCode() == KeyEvent.VK_RIGHT) player.right = true;
-        // testing jump
-        // if(e.getKeyCode() == KeyEvent.VK_SPACE) player.jump();
+        
+        if(e.getKeyCode() == KeyEvent.VK_SPACE){
+            bullets.add(new Bullet(player.x + player.width/2, player.y));
+        }
     }
 
     @Override

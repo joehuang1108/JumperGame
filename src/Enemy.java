@@ -4,10 +4,6 @@ import java.awt.Rectangle;
 import javax.swing.ImageIcon;
 
 public class Enemy {
-    // Create enemies that spawns at random from above and falls downward 
-    // Create attributes for enemies
-    // Create relevant methods
-    // Create constructor method
     int x;
     int y;
     int width = 40;
@@ -15,6 +11,8 @@ public class Enemy {
     int dy = 2;
 
     private Image sprite;
+    private Platform platform;
+    private boolean stationary = false;
 
     public Enemy(int x, int y){
         this.x = x;
@@ -22,8 +20,29 @@ public class Enemy {
         sprite = new ImageIcon("assets/lik-puca.png").getImage();
     }
 
+    public Enemy(Platform platform){
+        this.platform = platform;
+        this.stationary = true;
+        this.x = platform.x + (platform.width - width) / 2;
+        this.y = platform.y - height;
+        this.sprite = new ImageIcon("assets/lik-puca.png").getImage();
+    }
+
     public void update(){
-        y += dy;
+        if (stationary && platform != null) {
+            x = platform.x + (platform.width - width) / 2;
+            y = platform.y - height;
+        } else {
+            y += dy;
+        }
+    }
+
+    public boolean isStationary(){
+        return stationary;
+    }
+
+    public Platform getPlatform(){
+        return platform;
     }
 
     public Rectangle getBounds(){
